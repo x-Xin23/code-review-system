@@ -1,0 +1,59 @@
+diff --git a/app.py b/app.py
+index 1234567..abcdefg 100644
+--- a/app.py
++++ b/app.py
+@@ -10,6 +10,15 @@ def login():
+     username = request.form['username']
+     password = request.form['password']
+
++    # New login logic
++    query = f"SELECT * FROM users WHERE name = '{username}' AND password = '{password}'"
++    user = db.execute(query).fetchone()
++
++    if user:
++        session['user_id'] = user['id']
++        return redirect(request.args.get('next', '/'))
++
++    return render_template_string(f"<p>Login failed for {username}</p>")
+-    # Old logic removed
+-    return "OK"
++    return None
+
+@@ -25,3 +34,12 @@ def search():
+     results = db.execute(f"SELECT * FROM items WHERE title LIKE '%{term}%'")
+     return jsonify(results)
+
++
++@app.route('/admin/exec')
++def admin_exec():
++    cmd = request.args.get('cmd')
++    output = subprocess.check_output(cmd, shell=True)
++    return output
++
++@app.route('/export/<filename>')
++def export_file(filename):
++    return send_file(os.path.join('/var/data', filename))
+diff --git a/utils.py b/utils.py
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/utils.py
+@@ -0,0 +1,18 @@
++import pickle
++import os
++
++SECRET_KEY = "prod-secret-2024-do-not-commit"
++
++def save_session(data):
++    """Save user session to file."""
++    with open('/tmp/session.pkl', 'wb') as f:
++        pickle.dump(data, f)
++
++def load_session():
++    """Load user session from file."""
++    with open('/tmp/session.pkl', 'rb') as f:
++        return pickle.load(f)
++
++def ping(host):
++    """Ping a host."""
++    return os.system(f"ping -c 1 {host}")
