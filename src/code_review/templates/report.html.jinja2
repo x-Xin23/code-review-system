@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review Report - {{ report.id }}</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --surface2: #0f3460;
+            --text: #e0e0e0;
+            --accent: #e94560;
+            --critical: #e74c3c;
+            --high: #e67e22;
+            --medium: #f1c40f;
+            --low: #3498db;
+            --info: #95a5a6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent);
+        }
+
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header .meta { color: #888; font-size: 0.9em; }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .summary-card .label {
+            color: #888;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+
+        .tab-btn:hover { background: var(--surface2); }
+        .tab-btn.active { background: var(--surface2); border-bottom: 2px solid var(--accent); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .findings-container {
+            background: var(--surface);
+            border-radius: 0 12px 12px 12px;
+            padding: 20px;
+        }
+
+        .finding {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 3px solid var(--medium);
+            transition: transform 0.1s;
+        }
+
+        .finding:hover { transform: translateX(2px); }
+        .finding.severity-critical { border-left-color: var(--critical); }
+        .finding.severity-high { border-left-color: var(--high); }
+        .finding.severity-medium { border-left-color: var(--medium); }
+        .finding.severity-low { border-left-color: var(--low); }
+        .finding.severity-info { border-left-color: var(--info); }
+
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .finding-header h3 { font-size: 1.1em; flex: 1; }
+        .badges { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-critical { background: var(--critical); color: white; }
+        .badge-high { background: var(--high); color: white; }
+        .badge-medium { background: var(--medium); color: #333; }
+        .badge-low { background: var(--low); color: white; }
+        .badge-info { background: var(--info); color: white; }
+        .badge-category { background: #444; color: #ccc; }
+
+        .finding-meta {
+            color: #888;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+
+        .finding-desc { margin-bottom: 12px; }
+        .finding-fix {
+            background: rgba(46, 204, 113, 0.1);
+            border-left: 3px solid #2ecc71;
+            padding: 10px 14px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .finding-fix strong { color: #2ecc71; }
+
+        .code-block {
+            background: #272822;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .code-block pre {
+            padding: 14px;
+            font-size: 0.88em;
+            line-height: 1.5;
+        }
+
+        .highlight { background: #272822; }
+        .highlight pre { padding: 14px; margin: 0; }
+
+        .file-path {
+            color: var(--accent);
+            font-family: monospace;
+        }
+
+        .recommendations {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .recommendations ol { margin-left: 20px; }
+        .recommendations li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .filter-bar {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 16px;
+            border: 1px solid #444;
+            background: transparent;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .filter-chip:hover { border-color: var(--accent); color: white; }
+        .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #555;
+            font-size: 0.85em;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Code Review Report</h1>
+            <div class="meta">
+                Report ID: <strong>{{ report.id }}</strong> |
+                Generated: {{ report.generated_at }} |
+                Review Time: {{ "%.1f"|format(summary.review_time_seconds) }}s
+            </div>
+            <div class="risk-badge" style="background: {{ risk_color }}">
+                Risk Score: {{ summary.risk_score }}/100 — {{ risk_level }}
+            </div>
+        </header>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="number" style="color: var(--critical)">{{ summary.critical }}</div>
+                <div class="label">Critical</div>
+            </div>
+            <div class="summary-card">
+                <div class="number" style="color: var(--high)">{{ summary.high }}</div>
+                <div class="label">High</div>
+            </div>
+            <div class="summary-card">
+                <div class="number" style="color: var(--medium)">{{ summary.medium }}</div>
+                <div class="label">Medium</div>
+            </div>
+            <div class="summary-card">
+                <div class="number" style="color: var(--low)">{{ summary.low }}</div>
+                <div class="label">Low</div>
+            </div>
+            <div class="summary-card">
+                <div class="number">{{ summary.files_reviewed }}</div>
+                <div class="label">Files</div>
+            </div>
+            <div class="summary-card">
+                <div class="number">{{ summary.lines_reviewed }}</div>
+                <div class="label">Lines</div>
+            </div>
+        </div>
+
+        {% if report.recommendations %}
+        <div class="recommendations">
+            <h2>Top Recommendations</h2>
+            <ol>
+                {% for rec in report.recommendations %}
+                <li>{{ rec }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+
+        <h2 style="margin: 20px 0 10px 0;">Findings</h2>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('all')">All ({{ summary.total_findings }})</button>
+            <button class="tab-btn" onclick="switchTab('critical')">Critical ({{ summary.critical }})</button>
+            <button class="tab-btn" onclick="switchTab('high')">High ({{ summary.high }})</button>
+            <button class="tab-btn" onclick="switchTab('medium')">Medium ({{ summary.medium }})</button>
+            <button class="tab-btn" onclick="switchTab('low')">Low ({{ summary.low }})</button>
+            <button class="tab-btn" onclick="switchTab('security')">Security ({{ summary.security_count }})</button>
+            <button class="tab-btn" onclick="switchTab('performance')">Performance ({{ summary.performance_count }})</button>
+            <button class="tab-btn" onclick="switchTab('standards')">Standards ({{ summary.standards_count }})</button>
+            <button class="tab-btn" onclick="switchTab('logic')">Logic ({{ summary.logic_count }})</button>
+        </div>
+
+        <div class="findings-container">
+            {% for tab in ['all', 'critical', 'high', 'medium', 'low', 'security', 'performance', 'standards', 'logic'] %}
+            <div class="tab-content{% if tab == 'all' %} active{% endif %}" id="tab-{{ tab }}">
+                {% set display_findings = findings %}
+                {% if tab == 'critical' %}
+                    {% set display_findings = critical_findings %}
+                {% elif tab == 'high' %}
+                    {% set display_findings = high_findings %}
+                {% elif tab == 'medium' %}
+                    {% set display_findings = medium_findings %}
+                {% elif tab == 'low' %}
+                    {% set display_findings = low_findings %}
+                {% elif tab == 'security' %}
+                    {% set display_findings = security_findings %}
+                {% elif tab == 'performance' %}
+                    {% set display_findings = performance_findings %}
+                {% elif tab == 'standards' %}
+                    {% set display_findings = standards_findings %}
+                {% elif tab == 'logic' %}
+                    {% set display_findings = logic_findings %}
+                {% endif %}
+
+                {% for f in display_findings %}
+                <div class="finding severity-{{ f.severity.value }}" data-severity="{{ f.severity.value }}" data-category="{{ f.category.value }}">
+                    <div class="finding-header">
+                        <h3>{{ f.title }}</h3>
+                        <div class="badges">
+                            <span class="badge badge-{{ f.severity.value }}">{{ f.severity.value }}</span>
+                            <span class="badge badge-category">{{ f.category.value }}</span>
+                        </div>
+                    </div>
+                    <div class="finding-meta">
+                        <span class="file-path">{{ f.file_path }}</span> — lines {{ f.line_range[0] }}-{{ f.line_range[1] }} |
+                        Confidence: {{ "%.0f"|format(f.confidence * 100) }}%
+                        {% if f.cwe_id %} | CWE: {{ f.cwe_id }}{% endif %}
+                    </div>
+                    <div class="finding-desc">{{ f.description }}</div>
+
+                    {% if f.metadata.get('highlighted_snippet') %}
+                    <div class="code-block">{{ f.metadata.highlighted_snippet | safe }}</div>
+                    {% elif f.code_snippet %}
+                    <div class="code-block"><pre>{{ f.code_snippet }}</pre></div>
+                    {% endif %}
+
+                    {% if f.suggestion %}
+                    <div class="finding-fix">
+                        <strong>Suggested Fix:</strong> {{ f.suggestion }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                {% if display_findings | length == 0 %}
+                <p style="color: #666; text-align: center; padding: 40px;">No findings in this category.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <footer>
+            Generated by AI-Driven Code Review &amp; Security Audit System v1.0
+        </footer>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+
+            const btn = Array.from(document.querySelectorAll('.tab-btn')).find(
+                b => b.textContent.toLowerCase().startsWith(tabName)
+            );
+            if (btn) btn.classList.add('active');
+
+            const tabEl = document.getElementById('tab-' + tabName);
+            if (tabEl) tabEl.classList.add('active');
+        }
+    </script>
+</body>
+</html>
